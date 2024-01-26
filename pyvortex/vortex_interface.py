@@ -7,12 +7,22 @@ I dont know where the dll's doc can be found
 """
 import ctypes
 from pathlib import Path
-from settings import app_settings
 from enum import Enum
+import os
+import sys
 
-USE_VORTEX_API = True  # To use vortex api library or the dll. Vortex api only works w/ python 3.8
+# To use vortex api library or the dll. Vortex api only works w/ python 3.8
+USE_VORTEX_API = True
 
 if USE_VORTEX_API:
+    vortex_installation_path = os.getenv("VORTEX_PATH")
+    if vortex_installation_path is None:
+        raise EnvironmentError(
+            "Variable VORTEX_PATH not found in environment variables. Check the installation instructions."
+        )
+    sys.path.append(vortex_installation_path)
+    sys.path.append(vortex_installation_path + "/bin")
+
     import Vortex  # noqa
     import vxatp3  # noqa
 
@@ -24,14 +34,19 @@ class AppMode(Enum):
 
 
 class Vector3(ctypes.Structure):
-    _fields_ = ('x', ctypes.c_double), ('y', ctypes.c_double), ('z', ctypes.c_double)
+    _fields_ = ("x", ctypes.c_double), ("y", ctypes.c_double), ("z", ctypes.c_double)
 
     def __repr__(self):
-        return '({0}, {1}, {2})'.format(self.x, self.y, self.z)
+        return "({0}, {1}, {2})".format(self.x, self.y, self.z)
 
 
 class Vector4(ctypes.Structure):
-    _fields_ = ('x', ctypes.c_double), ('y', ctypes.c_double), ('z', ctypes.c_double), ('w', ctypes.c_double)
+    _fields_ = (
+        ("x", ctypes.c_double),
+        ("y", ctypes.c_double),
+        ("z", ctypes.c_double),
+        ("w", ctypes.c_double),
+    )
 
 
 class VortexInterface:
@@ -52,46 +67,59 @@ class VortexInterface:
         # Destroy the VxApplication when done
         self.app = None
 
-    def _init_vx_dll(self):
-        """To load the vortex dll and setup its functions types"""
-        dll_path = app_settings.vortex_installation_path / 'bin' / 'VortexIntegration.dll'
+    # def _init_vx_dll(self):
+    #     """To load the vortex dll and setup its functions types"""
+    #     dll_path = (
+    #         app_settings.vortex_installation_path / "bin" / "VortexIntegration.dll"
+    #     )
 
-        self.vx_dll = ctypes.WinDLL(str(dll_path))
+    #     self.vx_dll = ctypes.WinDLL(str(dll_path))
 
-        # Declare function inputs and outputs
-        self.vx_dll.VortexLoadScene.restype = ctypes.c_void_p
-        self.vx_dll.VortexGetChildByName.restype = ctypes.c_void_p
-        self.vx_dll.VortexGetChildByName.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self.vx_dll.VortexSetInputReal.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_double]
-        self.vx_dll.VortexGetOutputReal.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_char_p,
-            ctypes.c_char_p,
-            ctypes.POINTER(ctypes.c_double),
-        ]
-        self.vx_dll.VortexGetOutputVector3.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_char_p,
-            ctypes.c_char_p,
-            ctypes.POINTER(Vector3),
-        ]
-        self.vx_dll.VortexGetOutputMatrix.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_char_p,
-            ctypes.c_char_p,
-            ctypes.POINTER(Vector3),
-            ctypes.POINTER(Vector4),
-        ]
-        self.vx_dll.VortexUnloadScene.argtypes = [ctypes.c_void_p]
+    #     # Declare function inputs and outputs
+    #     self.vx_dll.VortexLoadScene.restype = ctypes.c_void_p
+    #     self.vx_dll.VortexGetChildByName.restype = ctypes.c_void_p
+    #     self.vx_dll.VortexGetChildByName.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    #     self.vx_dll.VortexSetInputReal.argtypes = [
+    #         ctypes.c_void_p,
+    #         ctypes.c_char_p,
+    #         ctypes.c_char_p,
+    #         ctypes.c_double,
+    #     ]
+    #     self.vx_dll.VortexGetOutputReal.argtypes = [
+    #         ctypes.c_void_p,
+    #         ctypes.c_char_p,
+    #         ctypes.c_char_p,
+    #         ctypes.POINTER(ctypes.c_double),
+    #     ]
+    #     self.vx_dll.VortexGetOutputVector3.argtypes = [
+    #         ctypes.c_void_p,
+    #         ctypes.c_char_p,
+    #         ctypes.c_char_p,
+    #         ctypes.POINTER(Vector3),
+    #     ]
+    #     self.vx_dll.VortexGetOutputMatrix.argtypes = [
+    #         ctypes.c_void_p,
+    #         ctypes.c_char_p,
+    #         ctypes.c_char_p,
+    #         ctypes.POINTER(Vector3),
+    #         ctypes.POINTER(Vector4),
+    #     ]
+    #     self.vx_dll.VortexUnloadScene.argtypes = [ctypes.c_void_p]
 
-    def create_application(self, setup_file: Path, application_name: str = 'Vortex App'):
+    def create_application(
+        self, setup_file: Path, application_name: str = "Vortex App"
+    ):
         if USE_VORTEX_API:
             setup_file_str = str(setup_file)
-            self.app = vxatp3.VxATPConfig.createApplication(self, application_name, setup_file_str)
+            self.app = vxatp3.VxATPConfig.createApplication(
+                self, application_name, setup_file_str
+            )
             self.set_app_mode(AppMode.EDITING)
 
         else:
-            self.app = self.vx_dll.VortexCreateApplication(str(setup_file).encode('ascii'), '', '', '', None)
+            self.app = self.vx_dll.VortexCreateApplication(
+                str(setup_file).encode("ascii"), "", "", "", None
+            )
 
     def load_scene(self, scene_file: Path):
         if USE_VORTEX_API:
@@ -99,21 +127,25 @@ class VortexInterface:
             self.scene = self.app.getSimulationFileManager().loadObject(scene_file_str)
 
             # Get the RL Interface VHL
-            self.interface = self.scene.findExtensionByName('ML Interface')
+            self.interface = self.scene.findExtensionByName("ML Interface")
 
-            self.interface.getOutputContainer()['j2_pos_real'].value
+            self.interface.getOutputContainer()["j2_pos_real"].value
 
         else:
-            self.scene = self.vx_dll.VortexLoadScene(str(scene_file).encode('ascii'))
+            self.scene = self.vx_dll.VortexLoadScene(str(scene_file).encode("ascii"))
 
         if self.scene is None or self.scene == 0:
-            raise RuntimeError('Scene not properly loaded')
+            raise RuntimeError("Scene not properly loaded")
 
     def load_display(self):
-        self.display = Vortex.VxExtensionFactory.create(Vortex.DisplayICD.kExtensionFactoryKey)
-        self.display.getInput(Vortex.DisplayICD.kPlacementMode).setValue('Windowed')
-        self.display.setName('Display')
-        self.display.getInput(Vortex.DisplayICD.kPlacement).setValue(Vortex.VxVector4(50, 50, 1280, 720))
+        self.display = Vortex.VxExtensionFactory.create(
+            Vortex.DisplayICD.kExtensionFactoryKey
+        )
+        self.display.getInput(Vortex.DisplayICD.kPlacementMode).setValue("Windowed")
+        self.display.setName("Display")
+        self.display.getInput(Vortex.DisplayICD.kPlacement).setValue(
+            Vortex.VxVector4(50, 50, 1280, 720)
+        )
 
     """ Setter/Getter"""
 
@@ -144,7 +176,7 @@ class VortexInterface:
 
     def render_display(self, active=True):
         # Find current list of displays
-        current_displays = self.app.findExtensionsByName('Display')
+        current_displays = self.app.findExtensionsByName("Display")
 
         # If active, add a display and activate Vsync
         if active and len(current_displays) == 0:
@@ -160,7 +192,11 @@ class VortexInterface:
     def save_current_frame(self):
         """To save the current key frame"""
         self.set_app_mode(AppMode.SIMULATING)
-        self.key_frame_list = self.app.getContext().getKeyFrameManager().createKeyFrameList('ResetFrameList', False)
+        self.key_frame_list = (
+            self.app.getContext()
+            .getKeyFrameManager()
+            .createKeyFrameList("ResetFrameList", False)
+        )
         self.app.update()
 
         self.key_frame_list.saveKeyFrame()
@@ -169,7 +205,9 @@ class VortexInterface:
 
     def reset_saved_frame(self):
         if self.saved_key_frame is None:
-            raise RuntimeError('No saved frame. VortexInterface.save_current_frame my be called before this.')
+            raise RuntimeError(
+                "No saved frame. VortexInterface.save_current_frame my be called before this."
+            )
 
         self.set_app_mode(AppMode.SIMULATING)
 
@@ -185,7 +223,9 @@ class VortexInterface:
         """
         maxNbIter = 100
         nbIter = 0
-        while len(self.key_frame_list.getKeyFrames()) != n_frames and nbIter < maxNbIter:
+        while (
+            len(self.key_frame_list.getKeyFrames()) != n_frames and nbIter < maxNbIter
+        ):
             if not self.app.update():
                 break
             ++nbIter

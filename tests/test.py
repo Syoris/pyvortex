@@ -1,1 +1,4 @@
-from pyvortex import vortex_interface
+from pyvortex.vortex_interface import VortexInterface
+
+vx = VortexInterface()
+print("Loading worked")

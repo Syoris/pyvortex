@@ -8,12 +8,21 @@ I dont know where the dll's doc can be found
 import ctypes
 from pathlib import Path
 from enum import Enum
+import os
+import sys
 
-USE_VORTEX_API = (
-    True  # To use vortex api library or the dll. Vortex api only works w/ python 3.8
-)
+# To use vortex api library or the dll. Vortex api only works w/ python 3.8
+USE_VORTEX_API = True
 
 if USE_VORTEX_API:
+    vortex_installation_path = os.getenv("VORTEX_PATH")
+    if vortex_installation_path is None:
+        raise EnvironmentError(
+            "Variable VORTEX_PATH not found in environment variables. Check the installation instructions."
+        )
+    sys.path.append(vortex_installation_path)
+    sys.path.append(vortex_installation_path + "/bin")
+
     import Vortex  # noqa
     import vxatp3  # noqa
 

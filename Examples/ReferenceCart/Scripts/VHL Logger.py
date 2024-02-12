@@ -1,25 +1,15 @@
+import importlib.util
 from Vortex import *
 
-# Below user defined functions can be refactored
-# User defined function
-def CreateInput(extension, name, type):
-    input = extension.getInput(name)
-    if input is None:
-        input = extension.addInput(name, type)
-
-def CreateParameter(extension, name, type, default = None):
-    param = extension.getParameter(name)
-    if param is None:
-        param = extension.addParameter(name, type)
-        if default is not None:
-            param.value = default
-
-def CreateOutput(extension, name, type):
-    output = extension.getOutput(name)
-    if output is None:
-        output = extension.addOutput(name, type)
-
 def on_simulation_start(extension):
+
+    # passing the file name and path as argument
+    spec = importlib.util.spec_from_file_location(
+        "vortex_logger", "C:/Users/henryh/Desktop/pyvortex/pyvortex/vortex_logger.py")
+
+    # importing the module as foo
+    vortex_logger = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vortex_logger)
 
     try:
         print(extension.parameters.Output_File.value)
@@ -27,11 +17,11 @@ def on_simulation_start(extension):
         print("cannot find output_file parameter")
 
     # INPUTS
-    CreateInput(extension, "Logging Active", Types.Type_Bool)
+    vortex_logger.CreateInput(extension, "Logging Active", Types.Type_Bool)
 
     # PARAMETERS
-    CreateParameter(extension, 'Output File', Types.Type_VxFilename)
-    CreateParameter(extension, "VHL Interface", Types.Type_ExtensionPtr) # VHL interface
+    vortex_logger.CreateParameter(extension, 'Output File', Types.Type_VxFilename)
+    vortex_logger.CreateParameter(extension, "VHL Interface", Types.Type_ExtensionPtr) # VHL interface
 
     # Check whether VHL is feed into the VHL interface parameter field
     try:

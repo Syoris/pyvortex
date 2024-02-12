@@ -84,6 +84,7 @@ for mechName in mechanisms:
     application.clean()
     time.sleep(1)
 
+# Might also not be able to refactor it because the number of arrays we want to save depends on the user...
 with open("allStats.csv", 'w', newline='') as file:
     writer = csv.writer(file)
     titles = ["Mechanism", "Number of Pulleys", "Average Solve Time", "SD of Solve Time"]

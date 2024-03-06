@@ -129,8 +129,6 @@ class VortexInterface:
             # Get the RL Interface VHL
             self.interface = self.scene.findExtensionByName("ML Interface")
 
-            self.interface.getOutputContainer()["j2_pos_real"].value
-
         else:
             self.scene = self.vx_dll.VortexLoadScene(str(scene_file).encode("ascii"))
 

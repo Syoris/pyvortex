@@ -1,6 +1,8 @@
 import math
 import pytest
 from pathlib import Path
+import pygetwindow as gw
+import time
 
 from pyvortex.vortex_env import VortexEnv
 from pyvortex.vortex_classes import AppMode, VortexInterface
@@ -31,7 +33,7 @@ class VX_Outputs(VortexInterface):
 
 @pytest.fixture(
     scope='class',
-    params=[('config.vxc', 'Kinova Gen2 Unjamming/Scenes/kinova_peg-in-hole.vxscene')],
+    params=[('config_no_disp.vxc', 'Kinova Gen2 Unjamming/Scenes/kinova_peg-in-hole.vxscene')],
 )
 def env_files(request):
     """Config and scene files for the Vortex environment
@@ -74,6 +76,7 @@ def vortex_env(env_files, inputs_interface, outputs_interface):
         content_file=content_file,
         inputs_interface=inputs_interface,
         outputs_interface=outputs_interface,
+        viewpoints=['Global', 'Perspective'],
     )
 
     vortex_env.set_app_mode(AppMode.SIMULATING)
@@ -158,8 +161,39 @@ class TestVortexEnv:
         assert math.isclose(val_j4_pos, j4_goal, abs_tol=2), f'Assertion failed: {val_j4_pos} != {j4_goal}'
         assert math.isclose(val_j6_pos, j6_goal, abs_tol=2), f'Assertion failed: {val_j6_pos} != {j6_goal}'
 
-    # test_rendering()
+    def test_rendering(self, vortex_env):
+        """Test the rendering of the Vortex environment.
 
-    # test_cameras
+        Sleep needed to allow the windows to open and close.
+        """
+        disp_name_window_name = 'CM Labs Graphics Qt'
 
-    # test_
+        # --- Two windows should be open at firts ---
+        n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
+        assert n_disp == 2
+
+        # Default viewpoint
+        vortex_env.render_display(active=False)
+        time.sleep(0.5)
+        n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
+        assert n_disp == 0
+
+        vortex_env._init_displays([], render=True)
+        time.sleep(0.5)
+        # vortex_env.step()
+        n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
+        assert n_disp == 1
+
+        # --- Two viewpoints ---
+        vortex_env.render_display(active=False)
+        time.sleep(0.5)
+        n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
+        assert n_disp == 0
+
+        vortex_env._init_displays(['Global', 'Perspective'], render=True)
+        time.sleep(0.5)
+
+        n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
+        assert n_disp == 2
+
+    # def test_recording

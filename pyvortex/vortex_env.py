@@ -11,7 +11,7 @@ from pathlib import Path
 import Vortex  # noqa
 import vxatp3  # noqa
 
-from pyvortex.vortex_classes import AppMode, Vector4, Vector3, VortexInterface
+from pyvortex.vortex_classes import AppMode, VortexInterface
 
 
 class VortexEnv:
@@ -31,6 +31,7 @@ class VortexEnv:
         inputs_interface=VortexInterface(),
         outputs_interface=VortexInterface(),
         params_interface=VortexInterface(),
+        viewpoints: list = [],  # Name of the viewpoints to render. '' for default
     ) -> None:
         self.sim_time = 0.0
         self.step_count = 0  # Step counter
@@ -61,10 +62,10 @@ class VortexEnv:
                 f'Simulation time step mismatch between application and config: {self.h} != {self.get_simulation_time_step()}'
             )
 
-        # self.load_display()
-        # self.render_display(active=True)
-
-        self.saved_key_frame = None
+        # Displays
+        self.viewpoints_list = []
+        self.display_dict = {}
+        self._init_displays(viewpoints, render=True)
 
     def __del__(self):
         # Destroy the VxApplication when done
@@ -90,12 +91,6 @@ class VortexEnv:
 
         if self.scene is None or self.scene == 0:
             raise RuntimeError('Scene not properly loaded')
-
-    def load_display(self):
-        self.display = Vortex.VxExtensionFactory.create(Vortex.DisplayICD.kExtensionFactoryKey)
-        self.display.getInput(Vortex.DisplayICD.kPlacementMode).setValue('Windowed')
-        self.display.setName('Display')
-        self.display.getInput(Vortex.DisplayICD.kPlacement).setValue(Vortex.VxVector4(50, 50, 1280, 720))
 
     """ Setter/Getter"""
 
@@ -125,22 +120,55 @@ class VortexEnv:
     def get_simulation_time_step(self):
         return self.app.getSimulationTimeStep()
 
-    """ Other """
+    """ Display """
+
+    def _init_displays(self, viewpoints: list, render=True):
+        """To initialize the displays"""
+        if not viewpoints:
+            self.viewpoints_list = ['']
+        else:
+            self.viewpoints_list = viewpoints
+
+        self.display_dict = {}
+        for viewpoint in self.viewpoints_list:
+            self.create_display(viewpoint_name=viewpoint)
+
+        self.render_display(active=render)
+
+        self.saved_key_frame = None
+
+    def create_display(self, viewpoint_name: str):
+        disp_name = f'Display_{viewpoint_name}'
+        display = Vortex.VxExtensionFactory.create(Vortex.DisplayICD.kExtensionFactoryKey)
+        display.getInput(Vortex.DisplayICD.kPlacementMode).setValue('Windowed')
+        display.setName(disp_name)
+        display.getInput(Vortex.DisplayICD.kPlacement).setValue(Vortex.VxVector4(50, 50, 1280, 720))
+
+        display.getInput(Vortex.DisplayICD.kViewpointName).setValue(viewpoint_name)
+
+        self.display_dict[disp_name] = display
 
     def render_display(self, active=True):
-        # Find current list of displays
-        current_displays = self.app.findExtensionsByName('Display')
+        changed_disp = False
 
-        # If active, add a display and activate Vsync
-        if active and len(current_displays) == 0:
-            self.app.add(self.display)
-            self.app.setSyncMode(Vortex.kSyncSoftwareAndVSync)
+        for display_name, display in self.display_dict.items():
+            # Find current list of displays
+            current_displays = self.app.findExtensionsByName(display_name)
 
-        # If not, remove the current display and deactivate Vsync
-        elif not active:
-            if len(current_displays) == 1:
-                self.app.remove(current_displays[0])
-            self.app.setSyncMode(Vortex.kSyncNone)
+            # If active, add a display and activate Vsync
+            if active and len(current_displays) == 0:
+                self.app.add(display)
+                changed_disp = True
+
+            # If not, remove the current display and deactivate Vsync
+            elif not active:
+                if len(current_displays) == 1:
+                    self.app.remove(current_displays[0])
+                    changed_disp = True
+                self.app.setSyncMode(Vortex.kSyncNone)
+
+        if changed_disp:
+            self.step()
 
     """ Simulation """
 

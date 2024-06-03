@@ -11,7 +11,7 @@ from pathlib import Path
 import Vortex  # noqa
 import vxatp3  # noqa
 
-from pyvortex.vortex_classes import AppMode, VortexInterface
+from pyvortex.vortex_classes import AppMode
 
 
 class VortexEnv:
@@ -28,17 +28,11 @@ class VortexEnv:
         config_file: str,
         content_file: str,
         h=0.01,
-        inputs_interface=VortexInterface(),
-        outputs_interface=VortexInterface(),
-        params_interface=VortexInterface(),
         viewpoints: list = [],  # Name of the viewpoints to render. '' for default
+        render: bool = True,
     ) -> None:
         self.sim_time = 0.0
         self.step_count = 0  # Step counter
-
-        self.inputs_interface = inputs_interface
-        self.outputs_interface = outputs_interface
-        self.params_interface = params_interface
 
         """Initialize environment (Vortex) parameters"""
         # Vortex
@@ -63,9 +57,13 @@ class VortexEnv:
             )
 
         # Displays
+        self.render = render
         self.viewpoints_list = []
         self.display_dict = {}
-        self._init_displays(viewpoints, render=True)
+        self._init_displays(viewpoints, render=self.render)
+
+        # Step the simulation
+        self.step()
 
     def __del__(self):
         # Destroy the VxApplication when done

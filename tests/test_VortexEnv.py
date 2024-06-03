@@ -60,7 +60,7 @@ def outputs_interface():
 
 
 @pytest.fixture()
-def vortex_env(env_files, inputs_interface, outputs_interface):
+def vortex_env(env_files):
     """Create a Vortex environment from the env_files fixture
 
     Args:
@@ -74,8 +74,6 @@ def vortex_env(env_files, inputs_interface, outputs_interface):
         assets_dir=Path(__file__).parent / 'assets',
         config_file=config_file,
         content_file=content_file,
-        inputs_interface=inputs_interface,
-        outputs_interface=outputs_interface,
         viewpoints=['Global', 'Perspective'],
     )
 
@@ -197,3 +195,7 @@ class TestVortexEnv:
         assert n_disp == 2
 
     # def test_recording
+
+    # def test_logger_path
+
+    # def test_key_frames

@@ -9,3 +9,6 @@
 3. For dev, clone the repo locally `https://github.com/Syoris/pyvortex/tree/main`
 4. Add it to your project
    - `poetry add --editable /path/to/pyvortex`
+
+Can also be added without cloning locally by adding this to `pyproject.toml`:
+- `pyvortex = { git = "https://github.com/Syoris/pyvortex.git", branch = "main" }`

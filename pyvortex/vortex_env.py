@@ -31,6 +31,11 @@ class VortexEnv:
         viewpoints: list = [],  # Name of the viewpoints to render. '' for default
         render: bool = True,
     ) -> None:
+        """
+        Create a vortex application loading the specified scene and config files.
+
+        After the initialization, the application is in SIMULATING mode at time=h.
+        """
         self.sim_time = 0.0
         self.step_count = 0  # Step counter
 
@@ -57,12 +62,13 @@ class VortexEnv:
             )
 
         # Displays
-        self.render = render
+        self.render_mode = render
         self.viewpoints_list = []
         self.display_dict = {}
-        self._init_displays(viewpoints, render=self.render)
+        self._init_displays(viewpoints, render=self.render_mode)
 
         # Step the simulation
+        self.set_app_mode(AppMode.SIMULATING)
         self.step()
 
     def __del__(self):
@@ -112,8 +118,13 @@ class VortexEnv:
 
         return val
 
+    def get_app_mode(self) -> AppMode:
+        return AppMode(self.app.getApplicationMode())
+
     def set_app_mode(self, app_mode: AppMode):
+        self.app.pause(True)
         vxatp3.VxATPUtils.requestApplicationModeChangeAndWait(self.app, app_mode.value)
+        self.app.pause(False)
 
     def get_simulation_time_step(self):
         return self.app.getSimulationTimeStep()
@@ -131,11 +142,16 @@ class VortexEnv:
         for viewpoint in self.viewpoints_list:
             self.create_display(viewpoint_name=viewpoint)
 
-        self.render_display(active=render)
+        self.render(active=render)
 
         self.saved_key_frame = None
 
     def create_display(self, viewpoint_name: str):
+        """To create a display for a viewpoint
+
+        Args:
+            viewpoint_name (str): Name of the viewpoint
+        """
         disp_name = f'Display_{viewpoint_name}'
         display = Vortex.VxExtensionFactory.create(Vortex.DisplayICD.kExtensionFactoryKey)
         display.getInput(Vortex.DisplayICD.kPlacementMode).setValue('Windowed')
@@ -146,7 +162,12 @@ class VortexEnv:
 
         self.display_dict[disp_name] = display
 
-    def render_display(self, active=True):
+    def render(self, active=True):
+        """To render all the displays if active is True. Otherwise, remove all displays.
+
+        Calling this method doesn't step the simulation time.
+        """
+
         changed_disp = False
 
         for display_name, display in self.display_dict.items():
@@ -166,7 +187,18 @@ class VortexEnv:
                 self.app.setSyncMode(Vortex.kSyncNone)
 
         if changed_disp:
-            self.step()
+            # self.set_app_mode(AppMode.EDITING)
+            self.app.pause(True)
+            self.app.update()
+            self.app.pause(False)
+
+            # self.step()
+
+            # self.set_app_mode(AppMode.SIMULATING)
+            # self.app.update()
+
+            # self.app.setApplicationMode(AppMode.EDITING.value)
+            # self.app.setApplicationMode(AppMode.SIMULATING.value)
 
     """ Simulation """
 

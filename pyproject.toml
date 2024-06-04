@@ -23,9 +23,10 @@ build-backend = "poetry.core.masonry.api"
 [tool.pytest]
 [tool.pytest.ini_options]
 addopts = [
-    "-s",
+    # "--show-capture",
     "--import-mode=importlib",
     # "-n 1",
+    "-p no:faulthandler",
     ]
 
 # MARK: Ruff

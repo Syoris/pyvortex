@@ -7,12 +7,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "~3.8"
-pydantic = "^2.7.1"
+pydantic = "2.5.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.1"
-
-[tool.poetry.group.test.dependencies]
 pygetwindow = "^0.0.9"
 
 [build-system]

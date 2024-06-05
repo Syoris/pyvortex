@@ -201,6 +201,26 @@ class TestVortexEnv:
         assert n_disp == 2
         assert vortex_env.sim_time == init_env_time
 
+    @pytest.mark.skip  # Feature not working yet
+    def test_multiple_envs(self, env_files):
+        config_file, content_file = env_files
+        vortex_env = VortexEnv(
+            assets_dir=Path(__file__).parent / 'assets',
+            config_file=config_file,
+            content_file=content_file,
+            viewpoints=['Global', 'Perspective'],
+        )
+
+        print('\n---------- APP 2 ----------')
+        vortex_env2 = VortexEnv(
+            assets_dir=Path(__file__).parent / 'assets',
+            config_file=config_file,
+            content_file=content_file,
+            viewpoints=['Global'],
+        )
+
+        ...
+
     # def test_recording
 
     # def test_logger_path

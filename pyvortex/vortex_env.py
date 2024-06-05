@@ -7,11 +7,13 @@ I dont know where the dll's doc can be found
 """
 
 from pathlib import Path
+import sys
 
 import Vortex  # noqa
 import vxatp3  # noqa
 
 from pyvortex.vortex_classes import AppMode
+import datetime
 
 
 class VortexEnv:
@@ -31,6 +33,8 @@ class VortexEnv:
         viewpoints: list = [],  # Name of the viewpoints to render. '' for default
         render: bool = True,
     ) -> None:
+        print('[VortexEnv.__init__] Initializing VortexEnv')
+
         """
         Create a vortex application loading the specified scene and config files.
 
@@ -50,7 +54,10 @@ class VortexEnv:
         self.assets_dir: Path = assets_dir
         self._setup_file_path: Path = self.assets_dir / self._config_file  # 'config_withoutgraphics.vxc'
         self._content_file_path: Path = self.assets_dir / self._content_file  # scene file
-        self.application_name: str = 'Vortex App'
+
+        current_time = datetime.datetime.now().strftime('%m-%d-%S')
+        self.application_name: str = f'Vortex App_{current_time}'
+        print(f'[VortexEnv.__init__] Application name: {self.application_name}')
 
         # Create the Vortex Application
         self._create_application()
@@ -71,14 +78,23 @@ class VortexEnv:
         self.set_app_mode(AppMode.SIMULATING)
         self.step()
 
+        print('[VortexEnv.__init__] Initializion done')
+
     def __del__(self):
         # Destroy the VxApplication when done
         self.app = None
 
     def _create_application(self):
         """To create the Vortex application"""
-        setup_file_str = str(self._setup_file_path)
-        self.app = vxatp3.VxATPConfig.createApplication(self, self.application_name, setup_file_str)
+        self.app = Vortex.VxApplication()
+
+        serializer = Vortex.VxObjectSerializer()
+        serializer.load(str(self._setup_file_path))
+
+        config = Vortex.ApplicationConfigInterface(serializer.getObject())
+        config.parameterPython3.interpreterDirectory.value = sys.exec_prefix
+        config.apply(self.app)
+
         self.set_app_mode(AppMode.EDITING)
 
     def _load_scene(self):

@@ -200,21 +200,17 @@ class VortexEnv:
                 if len(current_displays) == 1:
                     self.app.remove(current_displays[0])
                     changed_disp = True
-                self.app.setSyncMode(Vortex.kSyncNone)
 
         if changed_disp:
-            # self.set_app_mode(AppMode.EDITING)
+            # VSync Mode
+            if active:
+                self.app.setSyncMode(Vortex.kSyncNone)
+            else:
+                self.app.setSyncMode(Vortex.kSyncNone)
+
             self.app.pause(True)
             self.app.update()
             self.app.pause(False)
-
-            # self.step()
-
-            # self.set_app_mode(AppMode.SIMULATING)
-            # self.app.update()
-
-            # self.app.setApplicationMode(AppMode.EDITING.value)
-            # self.app.setApplicationMode(AppMode.SIMULATING.value)
 
     """ Simulation """
 
@@ -226,7 +222,10 @@ class VortexEnv:
     def save_current_frame(self):
         """To save the current key frame"""
         self.set_app_mode(AppMode.SIMULATING)
-        self.key_frame_list = self.app.getContext().getKeyFrameManager().createKeyFrameList('ResetFrameList', False)
+        reset_frames_list_name = f'{self.application_name}_ResetFrameList'
+        self.key_frame_list = (
+            self.app.getContext().getKeyFrameManager().createKeyFrameList(reset_frames_list_name, False)
+        )
         self.app.update()
 
         self.key_frame_list.saveKeyFrame()

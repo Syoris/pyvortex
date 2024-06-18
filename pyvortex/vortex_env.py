@@ -8,12 +8,33 @@ I dont know where the dll's doc can be found
 
 from pathlib import Path
 import sys
+import numpy as np
 
 import Vortex  # noqa
 import vxatp3  # noqa
 
 from pyvortex.vortex_classes import AppMode
 import datetime
+
+
+def np_to_Mat44(array: np.ndarray) -> Vortex.Matrix44:
+    """
+    Convert a numpy array to a Vortex Mat44
+
+    Args:
+        array (np.ndarray): 4x4 array
+
+    Returns:
+        Vortex.Mat44: Vortex Mat44
+    """
+    if array.shape != (4, 4):
+        raise ValueError('Array shape must be (4, 4)')
+
+    if not (array[0:3, 0:3] == np.eye(3)).all():
+        raise ValueError('Rotations are not yet supported')
+
+    mat = Vortex.createTranslation(array[0, 3], array[1, 3], array[2, 3])
+    return mat
 
 
 class VortexEnv:
@@ -118,16 +139,30 @@ class VortexEnv:
         self.interface.getParameterContainer()[field_name].value = field_value
 
     def set_input(self, field_name: str, field_value):
+        if isinstance(field_value, np.ndarray):
+            if field_value.shape == (4, 4):
+                field_value = np_to_Mat44(field_value)
+
         self.interface.getInputContainer()[field_name].value = field_value
 
     def get_input(self, field_name: str):
-        val = self.interface.getInputContainer()[field_name].value
+        try:
+            val = self.interface.getInputContainer()[field_name].value
+
+            if isinstance(val, Vortex.Matrix44):
+                val = np.array(val)
+
+        except AttributeError as err:  # If value name invalid
+            raise err
 
         return val
 
     def get_output(self, field_name: str):
         try:
             val = self.interface.getOutputContainer()[field_name].value
+
+            if isinstance(val, Vortex.Matrix44):
+                val = np.array(val)
 
         except AttributeError as err:  # If value name invalid
             raise err
@@ -144,6 +179,13 @@ class VortexEnv:
 
     def get_simulation_time_step(self):
         return self.app.getSimulationTimeStep()
+
+    def sim_paused(self):
+        return self.app.isPaused()
+
+    def pause_sim(self, pause: bool):
+        self.app.pause(pause)
+        self.app.update()
 
     """ Display """
 

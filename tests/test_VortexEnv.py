@@ -15,7 +15,7 @@ class VX_Inputs(VortexInterface):
 
 
 class VX_Outputs(VortexInterface):
-    j2_pos_real: str = 'j2_pos'
+    j2_pos: str = 'j2_pos'
     j4_pos_real: str = 'j4_pos'
     j6_pos_real: str = 'j6_pos'
     j2_vel_real: str = 'j2_vel'
@@ -98,9 +98,9 @@ class TestVortexEnv:
         assert val_j6 == 0.0
 
     def test_get_outputs(self, vortex_env, outputs_interface):
-        val_j2_pos = vortex_env.get_output(outputs_interface.j2_pos_real)
-        val_j4_pos = vortex_env.get_output(outputs_interface.j4_pos_real)
-        val_j6_pos = vortex_env.get_output(outputs_interface.j6_pos_real)
+        val_j2_pos = vortex_env.get_output(outputs_interface.j2_pos)
+        val_j4_pos = vortex_env.get_output(outputs_interface.j4_pos)
+        val_j6_pos = vortex_env.get_output(outputs_interface.j6_pos)
 
         assert math.isclose(val_j2_pos, 0, abs_tol=1e-5)
         assert math.isclose(val_j4_pos, 0, abs_tol=1e-5)

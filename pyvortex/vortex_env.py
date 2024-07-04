@@ -247,6 +247,7 @@ class VortexEnv:
             # VSync Mode
             if active:
                 self.app.setSyncMode(Vortex.kSyncNone)
+                # self.app.setSyncMode(Vortex.kSyncVSync)
             else:
                 self.app.setSyncMode(Vortex.kSyncNone)
 

@@ -7,11 +7,34 @@ I dont know where the dll's doc can be found
 """
 
 from pathlib import Path
+import sys
+import numpy as np
 
 import Vortex  # noqa
 import vxatp3  # noqa
 
 from pyvortex.vortex_classes import AppMode
+import datetime
+
+
+def np_to_Mat44(array: np.ndarray) -> Vortex.Matrix44:
+    """
+    Convert a numpy array to a Vortex Mat44
+
+    Args:
+        array (np.ndarray): 4x4 array
+
+    Returns:
+        Vortex.Mat44: Vortex Mat44
+    """
+    if array.shape != (4, 4):
+        raise ValueError('Array shape must be (4, 4)')
+
+    if not (array[0:3, 0:3] == np.eye(3)).all():
+        raise ValueError('Rotations are not yet supported')
+
+    mat = Vortex.createTranslation(array[0, 3], array[1, 3], array[2, 3])
+    return mat
 
 
 class VortexEnv:
@@ -31,6 +54,13 @@ class VortexEnv:
         viewpoints: list = [],  # Name of the viewpoints to render. '' for default
         render: bool = True,
     ) -> None:
+        print('[VortexEnv.__init__] Initializing VortexEnv')
+
+        """
+        Create a vortex application loading the specified scene and config files.
+
+        After the initialization, the application is in SIMULATING mode at time=h.
+        """
         self.sim_time = 0.0
         self.step_count = 0  # Step counter
 
@@ -45,7 +75,10 @@ class VortexEnv:
         self.assets_dir: Path = assets_dir
         self._setup_file_path: Path = self.assets_dir / self._config_file  # 'config_withoutgraphics.vxc'
         self._content_file_path: Path = self.assets_dir / self._content_file  # scene file
-        self.application_name: str = 'Vortex App'
+
+        current_time = datetime.datetime.now().strftime('%m-%d-%S')
+        self.application_name: str = f'Vortex App_{current_time}'
+        print(f'[VortexEnv.__init__] Application name: {self.application_name}')
 
         # Create the Vortex Application
         self._create_application()
@@ -57,13 +90,16 @@ class VortexEnv:
             )
 
         # Displays
-        self.render = render
+        self.render_mode = render
         self.viewpoints_list = []
         self.display_dict = {}
-        self._init_displays(viewpoints, render=self.render)
+        self._init_displays(viewpoints, render=self.render_mode)
 
         # Step the simulation
+        self.set_app_mode(AppMode.SIMULATING)
         self.step()
+
+        print('[VortexEnv.__init__] Initializion done')
 
     def __del__(self):
         # Destroy the VxApplication when done
@@ -71,8 +107,15 @@ class VortexEnv:
 
     def _create_application(self):
         """To create the Vortex application"""
-        setup_file_str = str(self._setup_file_path)
-        self.app = vxatp3.VxATPConfig.createApplication(self, self.application_name, setup_file_str)
+        self.app = Vortex.VxApplication()
+
+        serializer = Vortex.VxObjectSerializer()
+        serializer.load(str(self._setup_file_path))
+
+        config = Vortex.ApplicationConfigInterface(serializer.getObject())
+        config.parameterPython3.interpreterDirectory.value = sys.exec_prefix
+        config.apply(self.app)
+
         self.set_app_mode(AppMode.EDITING)
 
     def _load_scene(self):
@@ -96,10 +139,21 @@ class VortexEnv:
         self.interface.getParameterContainer()[field_name].value = field_value
 
     def set_input(self, field_name: str, field_value):
+        if isinstance(field_value, np.ndarray):
+            if field_value.shape == (4, 4):
+                field_value = np_to_Mat44(field_value)
+
         self.interface.getInputContainer()[field_name].value = field_value
 
     def get_input(self, field_name: str):
-        val = self.interface.getInputContainer()[field_name].value
+        try:
+            val = self.interface.getInputContainer()[field_name].value
+
+            if isinstance(val, Vortex.Matrix44):
+                val = np.array(val)
+
+        except AttributeError as err:  # If value name invalid
+            raise err
 
         return val
 
@@ -107,16 +161,31 @@ class VortexEnv:
         try:
             val = self.interface.getOutputContainer()[field_name].value
 
+            if isinstance(val, Vortex.Matrix44):
+                val = np.array(val)
+
         except AttributeError as err:  # If value name invalid
             raise err
 
         return val
 
+    def get_app_mode(self) -> AppMode:
+        return AppMode(self.app.getApplicationMode())
+
     def set_app_mode(self, app_mode: AppMode):
+        self.app.pause(True)
         vxatp3.VxATPUtils.requestApplicationModeChangeAndWait(self.app, app_mode.value)
+        self.app.pause(False)
 
     def get_simulation_time_step(self):
         return self.app.getSimulationTimeStep()
+
+    def sim_paused(self):
+        return self.app.isPaused()
+
+    def pause_sim(self, pause: bool):
+        self.app.pause(pause)
+        self.app.update()
 
     """ Display """
 
@@ -131,11 +200,16 @@ class VortexEnv:
         for viewpoint in self.viewpoints_list:
             self.create_display(viewpoint_name=viewpoint)
 
-        self.render_display(active=render)
+        self.render(active=render)
 
         self.saved_key_frame = None
 
     def create_display(self, viewpoint_name: str):
+        """To create a display for a viewpoint
+
+        Args:
+            viewpoint_name (str): Name of the viewpoint
+        """
         disp_name = f'Display_{viewpoint_name}'
         display = Vortex.VxExtensionFactory.create(Vortex.DisplayICD.kExtensionFactoryKey)
         display.getInput(Vortex.DisplayICD.kPlacementMode).setValue('Windowed')
@@ -146,7 +220,12 @@ class VortexEnv:
 
         self.display_dict[disp_name] = display
 
-    def render_display(self, active=True):
+    def render(self, active=True):
+        """To render all the displays if active is True. Otherwise, remove all displays.
+
+        Calling this method doesn't step the simulation time.
+        """
+
         changed_disp = False
 
         for display_name, display in self.display_dict.items():
@@ -163,10 +242,18 @@ class VortexEnv:
                 if len(current_displays) == 1:
                     self.app.remove(current_displays[0])
                     changed_disp = True
-                self.app.setSyncMode(Vortex.kSyncNone)
 
         if changed_disp:
-            self.step()
+            # VSync Mode
+            if active:
+                self.app.setSyncMode(Vortex.kSyncNone)
+                # self.app.setSyncMode(Vortex.kSyncVSync)
+            else:
+                self.app.setSyncMode(Vortex.kSyncNone)
+
+            self.app.pause(True)
+            self.app.update()
+            self.app.pause(False)
 
     """ Simulation """
 
@@ -178,7 +265,10 @@ class VortexEnv:
     def save_current_frame(self):
         """To save the current key frame"""
         self.set_app_mode(AppMode.SIMULATING)
-        self.key_frame_list = self.app.getContext().getKeyFrameManager().createKeyFrameList('ResetFrameList', False)
+        reset_frames_list_name = f'{self.application_name}_ResetFrameList'
+        self.key_frame_list = (
+            self.app.getContext().getKeyFrameManager().createKeyFrameList(reset_frames_list_name, False)
+        )
         self.app.update()
 
         self.key_frame_list.saveKeyFrame()

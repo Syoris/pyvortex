@@ -15,7 +15,7 @@ class VX_Inputs(VortexInterface):
 
 
 class VX_Outputs(VortexInterface):
-    j2_pos_real: str = 'j2_pos'
+    j2_pos: str = 'j2_pos'
     j4_pos_real: str = 'j4_pos'
     j6_pos_real: str = 'j6_pos'
     j2_vel_real: str = 'j2_vel'
@@ -98,9 +98,9 @@ class TestVortexEnv:
         assert val_j6 == 0.0
 
     def test_get_outputs(self, vortex_env, outputs_interface):
-        val_j2_pos = vortex_env.get_output(outputs_interface.j2_pos_real)
-        val_j4_pos = vortex_env.get_output(outputs_interface.j4_pos_real)
-        val_j6_pos = vortex_env.get_output(outputs_interface.j6_pos_real)
+        val_j2_pos = vortex_env.get_output(outputs_interface.j2_pos)
+        val_j4_pos = vortex_env.get_output(outputs_interface.j4_pos)
+        val_j6_pos = vortex_env.get_output(outputs_interface.j6_pos)
 
         assert math.isclose(val_j2_pos, 0, abs_tol=1e-5)
         assert math.isclose(val_j4_pos, 0, abs_tol=1e-5)
@@ -141,7 +141,7 @@ class TestVortexEnv:
 
         # Step for `time`
         sim_time = vortex_env.sim_time
-        assert sim_time == 0.0
+        assert sim_time == 0.01
 
         for _ in range(int(time / vortex_env.h)):
             sim_time = vortex_env.sim_time
@@ -164,35 +164,62 @@ class TestVortexEnv:
 
         Sleep needed to allow the windows to open and close.
         """
+        init_env_time = 0.01
+
         disp_name_window_name = 'CM Labs Graphics Qt'
 
         # --- Two windows should be open at firts ---
         n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
         assert n_disp == 2
+        assert vortex_env.sim_time == init_env_time
 
         # Default viewpoint
-        vortex_env.render_display(active=False)
+        vortex_env.render(active=False)
         time.sleep(0.5)
         n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
         assert n_disp == 0
+        assert vortex_env.sim_time == init_env_time
 
         vortex_env._init_displays([], render=True)
         time.sleep(0.5)
         # vortex_env.step()
         n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
         assert n_disp == 1
+        assert vortex_env.sim_time == init_env_time
 
         # --- Two viewpoints ---
-        vortex_env.render_display(active=False)
+        vortex_env.render(active=False)
         time.sleep(0.5)
         n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
         assert n_disp == 0
+        assert vortex_env.sim_time == init_env_time
 
         vortex_env._init_displays(['Global', 'Perspective'], render=True)
         time.sleep(0.5)
 
         n_disp = len(gw.getWindowsWithTitle(disp_name_window_name))
         assert n_disp == 2
+        assert vortex_env.sim_time == init_env_time
+
+    @pytest.mark.skip  # Feature not working yet
+    def test_multiple_envs(self, env_files):
+        config_file, content_file = env_files
+        vortex_env = VortexEnv(
+            assets_dir=Path(__file__).parent / 'assets',
+            config_file=config_file,
+            content_file=content_file,
+            viewpoints=['Global', 'Perspective'],
+        )
+
+        print('\n---------- APP 2 ----------')
+        vortex_env2 = VortexEnv(
+            assets_dir=Path(__file__).parent / 'assets',
+            config_file=config_file,
+            content_file=content_file,
+            viewpoints=['Global'],
+        )
+
+        ...
 
     # def test_recording
 

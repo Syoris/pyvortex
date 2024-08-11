@@ -220,7 +220,7 @@ class VortexEnv:
 
         self.display_dict[disp_name] = display
 
-    def render(self, active=True):
+    def render(self, active=True, real_time=False):
         """To render all the displays if active is True. Otherwise, remove all displays.
 
         Calling this method doesn't step the simulation time.
@@ -246,8 +246,10 @@ class VortexEnv:
         if changed_disp:
             # VSync Mode
             if active:
-                self.app.setSyncMode(Vortex.kSyncNone)
-                # self.app.setSyncMode(Vortex.kSyncVSync)
+                if real_time:
+                    self.app.setSyncMode(Vortex.kSyncVSync)
+                else:
+                    self.app.setSyncMode(Vortex.kSyncNone)
             else:
                 self.app.setSyncMode(Vortex.kSyncNone)
 
